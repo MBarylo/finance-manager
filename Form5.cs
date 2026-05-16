@@ -161,11 +161,17 @@ namespace МенОсобФін_КП_Барило
                         }
 
                         //_parentForm.SaveDataToJson();
-
+                        
 
                         Balance();
                         Meta();
                         UpdateProgressBar();
+                        MessageBox.Show(
+                   "Ви успішно відклали гроші на вашу мету",
+                   "Успіх",
+                   MessageBoxButtons.OK,
+                   MessageBoxIcon.Information
+               );
 
                     }
                     else

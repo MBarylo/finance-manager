@@ -1,0 +1,13 @@
+# Visual Studio
+.vs/
+
+# JetBrains IDE
+.idea/
+
+# Build folders
+bin/
+obj/
+
+# User files
+*.user
+*.suo

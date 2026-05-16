@@ -5,9 +5,11 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static МенОсобФін_КП_Барило.Form1;
 
 namespace МенОсобФін_КП_Барило
 {
@@ -16,9 +18,40 @@ namespace МенОсобФін_КП_Барило
         public Form2()
         {
             InitializeComponent();
+
             Full();
+
+
+
             InitializeToolTips();
+
+            typ.SelectedIndexChanged += typ_SelectedIndexChanged;
         }
+
+        public Form2(Transaction transaction)
+        {
+            InitializeComponent();
+
+            Full();
+
+            InitializeToolTips();
+
+            // запам’ятовуємо транзакцію
+            EditingTransaction = transaction;
+
+            // заповнюємо форму даними
+            typ.SelectedItem = transaction.Type;
+            typ.Enabled = false;
+            categ.SelectedItem = transaction.Category;
+            amount.Text = transaction.Amount.ToString();
+            dat.Value = transaction.Date;
+            description.Text = transaction.Description;
+        }
+
+        public Transaction EditingTransaction = null;
+
+        public Transaction CreatedTransaction { get; private set; }
+        public DataValidator validator { get; private set; } = new DataValidator();
 
         private void InitializeToolTips()
         {
@@ -41,12 +74,16 @@ namespace МенОсобФін_КП_Барило
             toolTip1.InitialDelay = 500; //час до появи підказки (мс)
         }
 
-        public string type { get; private set; }
-        public string sum { get; private set; }
-        public string category { get; private set; }
-        public DateTime date { get; private set; }
-        public string desc { get; private set; }
+        //оголошення менеджера
+        private FinanceManager manager;
 
+        public Form2(FinanceManager manager) : this()
+        {
+            this.manager = manager;
+
+        }
+
+        // заповнення полів
         private void Full()
         {
             
@@ -82,6 +119,7 @@ namespace МенОсобФін_КП_Барило
                     categ.Items.Add("Зарплата");
                     categ.Items.Add("Продаж");
                     categ.Items.Add("Допомога");
+
                 }
                 else if (selectedType == "Витрата")
                 {
@@ -91,6 +129,7 @@ namespace МенОсобФін_КП_Барило
                     categ.Items.Add("Подарунок");
                     categ.Items.Add("Меблі");
                     categ.Items.Add("Збір");
+
                 }
 
                 categ.SelectedIndex = -1;
@@ -103,73 +142,64 @@ namespace МенОсобФін_КП_Барило
 
         //кнопка збереження
         private void save_Click(object sender, EventArgs e)
-
-
         {
-            //присвоюємо суму операції публічній властивості amount і очищаємо цей текст від пробілів. А потім створюємо числовий тип для перевірки введених даних на число
-            string sumText = amount.Text.Trim();
             decimal sumValue;
 
-            //якщо не вводимо взагалі нічого - виводимо відповідне повідомлення
-            if (string.IsNullOrWhiteSpace(amount.Text) || string.IsNullOrWhiteSpace(sumText))
+            // перевірка суми
+            if (!validator.TryParseAmount(amount.Text, out sumValue))
             {
-                MessageBox.Show(
-                    "Будь ласка, введіть всі дані",
-                    "Помилка введення",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
-                //і фокусуємося на інпуті суми операції
-                amount.Focus(); 
+                MessageBox.Show("Введіть числову суму");
                 return;
             }
 
-            //пробуємо перевести текстове значення суми в число, якщо не переводиться - виводимо відповідне повідомлення і фокусуємося на інпуті суми
-            if (!decimal.TryParse(sumText, out sumValue))
+            // перевірка типу
+            if (typ.SelectedItem == null)
             {
-                MessageBox.Show("Введене значення Суми операції не є коректним числом.", "Помилка формату", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                amount.Focus();
+                MessageBox.Show("Оберіть тип операції");
                 return;
             }
 
-            if (typ.SelectedIndex == -1)
+            // перевірка категорії
+            if (categ.SelectedItem == null)
             {
-                MessageBox.Show("Будь ласка, оберіть Тип операції (Дохід/Витрата).", "Необхідні дані", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                typ.Focus();
+                MessageBox.Show("Оберіть категорію");
                 return;
             }
 
-
-            if (categ.SelectedIndex == -1)
+            // РЕДАГУВАННЯ
+            if (EditingTransaction != null)
             {
-                MessageBox.Show("Будь ласка, оберіть Категорію операції.", "Необхідні дані", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                categ.Focus();
-                return;
+                
+
+                
+
+                EditingTransaction.Category = categ.SelectedItem.ToString();
+                EditingTransaction.Amount = sumValue;
+                EditingTransaction.Date = dat.Value;
+                EditingTransaction.Description = description.Text.Trim();
             }
 
-            if (dat.Value.Date > DateTime.Today)
+            // СТВОРЕННЯ
+            else
             {
-                MessageBox.Show(
-                    "Неможливо додати операцію на майбутню дату. Будь ласка, оберіть сьогоднішню або минулу дату.",
-                    "Некоректна дата",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning
-                );
+                Transaction transaction;
 
-                dat.Focus();
-                return;
+                if (typ.SelectedItem.ToString() == "Дохід")
+                    transaction = new Income();
+                else
+                    transaction = new Expense();
+
+                
+                transaction.Category = categ.SelectedItem.ToString();
+                transaction.Amount = sumValue;
+                transaction.Date = dat.Value;
+                transaction.Description = description.Text.Trim();
+
+                CreatedTransaction = transaction;
             }
 
-            //присвоюємо всі дані публічним властивостям
-            type = typ.SelectedItem.ToString();    
-            category = categ.SelectedItem.ToString();
-            sum = amount.Text;
-            date = dat.Value;
-            desc = description.Text.Trim();
-
-            //відправляємо на головне вікно результат діалогового вікна "ОК"
             this.DialogResult = DialogResult.OK;
-            
+            this.Close();
         }
 
         private void clear_Click(object sender, EventArgs e)

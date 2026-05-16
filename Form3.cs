@@ -62,7 +62,7 @@ namespace МенОсобФін_КП_Барило
             _savedAmount = sumValue;
 
 
-
+            
 
             this.DialogResult = DialogResult.OK;
         }
